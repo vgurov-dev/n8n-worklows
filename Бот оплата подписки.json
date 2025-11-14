@@ -1,0 +1,656 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1136,
+        192
+      ],
+      "id": "56d549e3-3507-46c1-8524-2f1b4403e72a",
+      "name": "Триггер",
+      "webhookId": "e060571e-31e6-4d3d-9960-e420162d6f19",
+      "credentials": {
+        "telegramApi": {
+          "id": "qJuOBXO2TUYPOUam",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8",
+          "mode": "list",
+          "cachedResultName": "Подписки",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "id пользователя",
+              "lookupValue": "={{ $json.message.from.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1360,
+        192
+      ],
+      "id": "5f54aa0c-c502-4a6a-9311-6b9c42d73f0f",
+      "name": "Просмотр записи в таблице",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rkfLaxkYyZ5esYBn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e88adfd8-71dd-486e-93de-3a1c80c4f2ad",
+              "leftValue": "={{ $json['Статус подписки'] }}",
+              "rightValue": "Оплачено",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1584,
+        192
+      ],
+      "id": "09079c14-cd72-458c-8cc7-ff727e7e3627",
+      "name": "Подписка оплачена?"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    idempotence_key: Math.random().toString(36).substr(2, 12) + Date.now()\n  }\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        464
+      ],
+      "id": "1dc5b20c-6378-46a7-a9b9-c4747e5f6a16",
+      "name": "Генерация idempotence_key"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.yookassa.ru/v3/payments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotence-Key",
+              "value": "={{ $json.idempotence_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"amount\": {\n    \"value\": \"10.00\",\n    \"currency\": \"RUB\"\n  },\n  \"confirmation\": {\n    \"type\": \"embedded\"\n  },\n  \"capture\": true,\n  \"description\": \"Подписка №10\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1584,
+        464
+      ],
+      "id": "85d10c52-448e-4d05-822a-e2b56b7b52a1",
+      "name": "Создание платежа в Юkassa",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "sGU3oPAQeykiBqAN",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Триггер').item.json.message.chat.id }}",
+        "text": "Подписка не оплачена. ",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1136,
+        464
+      ],
+      "id": "a68d7f09-18b6-45c6-9c8f-1a6cb0b78948",
+      "name": "Сообщение, что подписка не активна",
+      "webhookId": "98c3b811-49fb-4927-ac6a-58300ea8be7d",
+      "credentials": {
+        "telegramApi": {
+          "id": "qJuOBXO2TUYPOUam",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Триггер').item.json.message.chat.id }}",
+        "text": "Желаете оплатить?  ",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "=Оплатить",
+                    "additionalFields": {
+                      "url": "=https://yoomoney.ru/api-pages/v2/payment-confirm/epl?orderId={{ $json.id }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1792,
+        464
+      ],
+      "id": "3200ca95-3224-41af-acdc-439c4a5d07a6",
+      "name": "Запрос на подтверждение оплаты",
+      "webhookId": "74c5e742-f2bf-47e3-b393-a1a51f2d60e3",
+      "credentials": {
+        "telegramApi": {
+          "id": "qJuOBXO2TUYPOUam",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.yookassa.ru/v3/payments/{{ $('Создание платежа в Юkassa').item.json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotence-Key",
+              "value": "={{ $json.idempotence_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2192,
+        464
+      ],
+      "id": "b04c1921-0c65-465e-b55b-fb85bffed735",
+      "name": "Просмотр данных платежа",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "sGU3oPAQeykiBqAN",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e88adfd8-71dd-486e-93de-3a1c80c4f2ad",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "succeeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2368,
+        464
+      ],
+      "id": "8265d30e-7c92-4c42-b2ec-fc86babfc966",
+      "name": "Оплата подтверждена?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Запрос на подтверждение оплаты').item.json.result.chat.id }}",
+        "text": "=Благодарим за оплату! Ваша подписка активна до {{ $json['Дата окончания (+30 дней)'] }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2960,
+        400
+      ],
+      "id": "0c76736f-4ea6-4d7f-aa2a-d9fb383fe7e5",
+      "name": "Сообщение об успешной подписке",
+      "webhookId": "035b755d-3e6a-4fe2-8462-4e45e7c93c21",
+      "credentials": {
+        "telegramApi": {
+          "id": "qJuOBXO2TUYPOUam",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputDate = new Date($input.first().json.captured_at);\n\nfunction formatDate(date) {\n  const d = date.getDate().toString().padStart(2, '0');\n  const m = (date.getMonth() + 1).toString().padStart(2, '0');\n  const y = date.getFullYear();\n  return `${d}.${m}.${y}`;\n}\n\nconst formattedDate = formatDate(inputDate);\n\nconst datePlus30 = new Date(inputDate);\ndatePlus30.setDate(datePlus30.getDate() + 30);\n\nconst formattedDatePlus30 = formatDate(datePlus30);\n\nreturn [\n  {\n    json: {\n      date: formattedDate,\n      date_plus_30: formattedDatePlus30,\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        400
+      ],
+      "id": "fa06ac34-6348-4671-8dfd-ff5ad1ded021",
+      "name": "Формирование даты начала и окончания подписки1"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8",
+          "mode": "list",
+          "cachedResultName": "Подписки",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id пользователя": "={{ $('Запрос на подтверждение оплаты').item.json.result.chat.id }}",
+            "Статус подписки": "Оплачено",
+            "Дата начала (дата оплаты)": "={{ $json.date }}",
+            "Дата окончания (+30 дней)": "={{ $json.date_plus_30 }}"
+          },
+          "matchingColumns": [
+            "id пользователя"
+          ],
+          "schema": [
+            {
+              "id": "id пользователя",
+              "displayName": "id пользователя",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Статус подписки",
+              "displayName": "Статус подписки",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Дата начала (дата оплаты)",
+              "displayName": "Дата начала (дата оплаты)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Дата окончания (+30 дней)",
+              "displayName": "Дата окончания (+30 дней)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Оставшееся количество дней",
+              "displayName": "Оставшееся количество дней",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2752,
+        400
+      ],
+      "id": "7ddab862-75ec-478f-84e1-ac68363100a5",
+      "name": "Запись в таблицу данных о подписке",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rkfLaxkYyZ5esYBn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Функция для парсинга строки DD.MM.YYYY в объект Date\nfunction parseDate(str) {\n  const parts = str.split('.');\n  return new Date(parts[2], parts[1] - 1, parts[0]); // год, месяц (0-11), день\n}\n\nconst endDateStr = $input.first().json['Дата окончания (+30 дней)'];\nconst endDate = parseDate(endDateStr);\n\nconst today = new Date();\ntoday.setHours(0, 0, 0, 0); // для сравнения только по дате\n\nconst millisecondsPerDay = 1000 * 60 * 60 * 24;\nconst diffMilliseconds = endDate - today;\n\n// округляем количество дней, минимум 0\nconst daysLeft = diffMilliseconds > 0 ? Math.floor(diffMilliseconds / millisecondsPerDay) : 0;\n\nreturn [\n  {\n    json: {\n      remaining_days: daysLeft,\n    },\n  },\n];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        192
+      ],
+      "id": "e0504932-1d83-4dcb-8b5d-93d5b684391c",
+      "name": "Расчет дней до окончания подписки"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Триггер').item.json.message.from.id }}",
+        "text": "={{ $('Триггер').item.json.message.from.first_name }}, ваша подписка активна до﻿ {{ $('Подписка оплачена?').item.json['Дата окончания (+30 дней)'] }}. Осталось {{ $json.remaining_days }} дней до окончания подписки. Благодарим за выбор нашего сервиса!﻿",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2000,
+        192
+      ],
+      "id": "93f17874-6436-4af1-b9e5-2f9a9078082b",
+      "name": "Сообщение о статусе подписки: оплачено",
+      "webhookId": "035b755d-3e6a-4fe2-8462-4e45e7c93c21",
+      "credentials": {
+        "telegramApi": {
+          "id": "qJuOBXO2TUYPOUam",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 45
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2000,
+        464
+      ],
+      "id": "88e4b6cb-794c-42e8-81b8-56f2c77276f7",
+      "name": "Ожидание",
+      "webhookId": "bf504e83-0562-45ee-a038-306bef52541a"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Запрос на подтверждение оплаты').item.json.result.chat.id }}",
+        "text": "К сожалению, оплата не прошла.  Для повторной попытки нажмите команду /start",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2560,
+        576
+      ],
+      "id": "40a13f3f-0d5d-4726-bc28-06eec1cdb9ff",
+      "name": "Сообщение, что оплата не прошла",
+      "webhookId": "95b8f7c3-e00d-43d5-818b-2b44e6a44711",
+      "credentials": {
+        "telegramApi": {
+          "id": "qJuOBXO2TUYPOUam",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Триггер": {
+      "main": [
+        [
+          {
+            "node": "Просмотр записи в таблице",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Просмотр записи в таблице": {
+      "main": [
+        [
+          {
+            "node": "Подписка оплачена?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подписка оплачена?": {
+      "main": [
+        [
+          {
+            "node": "Расчет дней до окончания подписки",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Сообщение, что подписка не активна",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Генерация idempotence_key": {
+      "main": [
+        [
+          {
+            "node": "Создание платежа в Юkassa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Создание платежа в Юkassa": {
+      "main": [
+        [
+          {
+            "node": "Запрос на подтверждение оплаты",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сообщение, что подписка не активна": {
+      "main": [
+        [
+          {
+            "node": "Генерация idempotence_key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Запрос на подтверждение оплаты": {
+      "main": [
+        [
+          {
+            "node": "Ожидание",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Просмотр данных платежа": {
+      "main": [
+        [
+          {
+            "node": "Оплата подтверждена?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Оплата подтверждена?": {
+      "main": [
+        [
+          {
+            "node": "Формирование даты начала и окончания подписки1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Сообщение, что оплата не прошла",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Формирование даты начала и окончания подписки1": {
+      "main": [
+        [
+          {
+            "node": "Запись в таблицу данных о подписке",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Запись в таблицу данных о подписке": {
+      "main": [
+        [
+          {
+            "node": "Сообщение об успешной подписке",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Расчет дней до окончания подписки": {
+      "main": [
+        [
+          {
+            "node": "Сообщение о статусе подписки: оплачено",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ожидание": {
+      "main": [
+        [
+          {
+            "node": "Просмотр данных платежа",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сообщение, что оплата не прошла": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d909b985-2ad5-4bdd-96e6-0148993f4ca8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f0c2d0de47c26bee49ec4746a72f7effb6052ad74a0ff221d5ba317aedca9c67"
+  },
+  "id": "uT3kFGhFPOiLnWTT",
+  "tags": []
+}
