@@ -1,0 +1,513 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 17
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        0
+      ],
+      "id": "4e919304-0d40-4dfb-8e5c-fded87b6b480",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Получение записей со статусом pending').item.json['id пользователя в телеграмм'] }}",
+        "text": "=Благодарим за оплату! Ваша подписка активна до {{ $('Формирование даты начала и окончания подписки1').item.json.date_plus_30 }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1328,
+        0
+      ],
+      "id": "3af12356-519e-4048-878a-760d360290c1",
+      "name": "Сообщение об успешной подписке",
+      "webhookId": "035b755d-3e6a-4fe2-8462-4e45e7c93c21",
+      "credentials": {
+        "telegramApi": {
+          "id": "qJuOBXO2TUYPOUam",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputString = $('Проверка статуса платежа').first().json.captured_at;\nconst inputDate = new Date(inputString);\n\nfunction formatDate(date) {\n  const d = date.getDate().toString().padStart(2, '0');\n  const m = (date.getMonth() + 1).toString().padStart(2, '0');\n  const y = date.getFullYear();\n  return `${d}.${m}.${y}`;\n}\n\nif (isNaN(inputDate.getTime())) {\n  throw new Error('Invalid date');\n}\n\nconst formattedDate = formatDate(inputDate);\n\nconst datePlus30 = new Date(inputDate);\ndatePlus30.setDate(datePlus30.getDate() + 30);\n\nconst formattedDatePlus30 = formatDate(datePlus30);\n\nreturn [\n  {\n    json: {\n      date: formattedDate,\n      date_plus_30: formattedDatePlus30,\n    }\n  }\n];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        0
+      ],
+      "id": "adaf6b3b-667e-4c74-ab18-fce927f93a6a",
+      "name": "Формирование даты начала и окончания подписки1"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8",
+          "mode": "list",
+          "cachedResultName": "Подписки",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id пользователя": "={{ $('Получение записей со статусом pending').item.json['id пользователя в телеграмм'] }}",
+            "Дата начала (дата оплаты)": "={{ $json.date }}",
+            "Количество дней подписки": "30"
+          },
+          "matchingColumns": [
+            "id пользователя"
+          ],
+          "schema": [
+            {
+              "id": "id пользователя",
+              "displayName": "id пользователя",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Дата начала (дата оплаты)",
+              "displayName": "Дата начала (дата оплаты)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Количество дней подписки",
+              "displayName": "Количество дней подписки",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1136,
+        0
+      ],
+      "id": "97216c9c-dc0e-4ef4-ace9-05c75bc2e71f",
+      "name": "Запись в таблицу данных о подписке",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rkfLaxkYyZ5esYBn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8",
+          "mode": "list",
+          "cachedResultName": "Подписки",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 902178819,
+          "mode": "list",
+          "cachedResultName": "Лист2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit#gid=902178819"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "pending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -32,
+        0
+      ],
+      "id": "426e88c0-ce72-49af-9fb3-a28d743c75a0",
+      "name": "Получение записей со статусом pending",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rkfLaxkYyZ5esYBn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.yookassa.ru/v3/payments/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        352,
+        0
+      ],
+      "id": "d357a2d0-c2d7-4bf3-9fc7-4d866d594f54",
+      "name": "Проверка статуса платежа",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "sGU3oPAQeykiBqAN",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8",
+          "mode": "list",
+          "cachedResultName": "Подписки",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 902178819,
+          "mode": "list",
+          "cachedResultName": "Лист2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Qk-IS7t97M8nJ0Y0IlXVbqU4fZtndATjBNpHUGuVaP8/edit#gid=902178819"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "status": "={{ $json.status }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        528,
+        0
+      ],
+      "id": "ded88965-d0a2-424d-84e5-5d4279834695",
+      "name": "Обновление статуса в таблице",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rkfLaxkYyZ5esYBn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e2be9cf7-2d78-4004-8c5c-4cc08f7ab84a",
+              "leftValue": "={{ $('Проверка статуса платежа').item.json.status }}",
+              "rightValue": "succeeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        0
+      ],
+      "id": "ec24b288-9a73-47f2-8a05-7a3cb9a36009",
+      "name": "Статус succeeded?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e2be9cf7-2d78-4004-8c5c-4cc08f7ab84a",
+              "leftValue": "={{ $('Проверка статуса платежа').item.json.status }}",
+              "rightValue": "canceled",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        208
+      ],
+      "id": "9ee57d5d-ecac-48e1-b3dd-6d94c9ddddc9",
+      "name": "Статус canceled ?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Получение записей со статусом pending').item.json['id пользователя в телеграмм'] }}",
+        "text": "=Ваш платеж не был подтвержден системой. Пожалуйста, проверьте данные и попробуйте выполнить оплату снова. Если возникнут вопросы, свяжитесь с нашей службой поддержки",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1136,
+        208
+      ],
+      "id": "ef3c4c5c-624e-4ff6-b21e-fc666039c86d",
+      "name": "Сообщение что платеж был отменен",
+      "webhookId": "035b755d-3e6a-4fe2-8462-4e45e7c93c21",
+      "credentials": {
+        "telegramApi": {
+          "id": "qJuOBXO2TUYPOUam",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        160,
+        0
+      ],
+      "id": "7aa51696-bdf2-4b93-8471-0e73b51ab286",
+      "name": "Loop Over Items"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Получение записей со статусом pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Формирование даты начала и окончания подписки1": {
+      "main": [
+        [
+          {
+            "node": "Запись в таблицу данных о подписке",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Запись в таблицу данных о подписке": {
+      "main": [
+        [
+          {
+            "node": "Сообщение об успешной подписке",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получение записей со статусом pending": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка статуса платежа": {
+      "main": [
+        [
+          {
+            "node": "Обновление статуса в таблице",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Обновление статуса в таблице": {
+      "main": [
+        [
+          {
+            "node": "Статус succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Статус succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Формирование даты начала и окончания подписки1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Статус canceled ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Статус canceled ?": {
+      "main": [
+        [
+          {
+            "node": "Сообщение что платеж был отменен",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Проверка статуса платежа",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сообщение что платеж был отменен": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сообщение об успешной подписке": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b72b81b1-5d60-40d0-89cf-26f7e30c4263",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f0c2d0de47c26bee49ec4746a72f7effb6052ad74a0ff221d5ba317aedca9c67"
+  },
+  "id": "noPm10HHUPMPR9fH",
+  "tags": []
+}
