@@ -1,0 +1,267 @@
+{
+  "name": "Контент завод",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -528,
+        -128
+      ],
+      "id": "a8bef21a-d7e2-4355-83e1-a475dac2eec9",
+      "name": "Триггер",
+      "webhookId": "e060571e-31e6-4d3d-9960-e420162d6f19",
+      "credentials": {
+        "telegramApi": {
+          "id": "91Tb63s6bh1rN41K",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "12eOKulhX7I4T3Q590RNkrLab7N47N8QX5TKsrHgmsmc",
+          "mode": "list",
+          "cachedResultName": "Контент-завод",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12eOKulhX7I4T3Q590RNkrLab7N47N8QX5TKsrHgmsmc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12eOKulhX7I4T3Q590RNkrLab7N47N8QX5TKsrHgmsmc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Идея (кратко)": "={{ $json.message.text }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Идея (кратко)",
+              "displayName": "Идея (кратко)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Идея (развернуто)",
+              "displayName": "Идея (развернуто)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Текст новости",
+              "displayName": "Текст новости",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -336,
+        -128
+      ],
+      "id": "527e58e3-1a12-40a4-a97f-8c904e8c8bbb",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rkfLaxkYyZ5esYBn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=У меня есть короткая идея: {{ $json['Идея (кратко)'] }}. Пожалуйста, преврати эту фразу в связный абзац из 2-3 предложений, подробно раскрывая смысл, предлагая контекст и добавляя интересные детали, чтобы идея выглядела более полной и выразительной "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -128
+      ],
+      "id": "12bb82c1-3bed-4e17-b136-75f0c98eb49d",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "K9GZKZX5lxhDsrTP",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "12eOKulhX7I4T3Q590RNkrLab7N47N8QX5TKsrHgmsmc",
+          "mode": "list",
+          "cachedResultName": "Контент-завод",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12eOKulhX7I4T3Q590RNkrLab7N47N8QX5TKsrHgmsmc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12eOKulhX7I4T3Q590RNkrLab7N47N8QX5TKsrHgmsmc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Идея (кратко)": "={{ $('Append row in sheet').item.json['Идея (кратко)'] }}",
+            "Идея (развернуто)": "={{ $json.content.parts[0].text }}"
+          },
+          "matchingColumns": [
+            "Идея (кратко)"
+          ],
+          "schema": [
+            {
+              "id": "Идея (кратко)",
+              "displayName": "Идея (кратко)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Идея (развернуто)",
+              "displayName": "Идея (развернуто)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Текст новости",
+              "displayName": "Текст новости",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        -128
+      ],
+      "id": "d5199074-a1ba-4358-92b7-c1ff4a26240d",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rkfLaxkYyZ5esYBn",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Триггер": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c678a2c3-7c5d-4841-929e-2cf032e507e9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f0c2d0de47c26bee49ec4746a72f7effb6052ad74a0ff221d5ba317aedca9c67"
+  },
+  "id": "GoYMjqaIOKDWnegH",
+  "tags": []
+}
