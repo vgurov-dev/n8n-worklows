@@ -1,0 +1,3617 @@
+{
+  "name": "Бот-продажник",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -3008,
+        -912
+      ],
+      "id": "7fbc5f8a-29ec-470d-a1b8-15b3f0f1021a",
+      "name": "Embeddings Google Gemini",
+      "notesInFlow": false,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GW1wqXvW3BLftkCs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Триггер: сообщение от клиента').item.json.message.from.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3984,
+        336
+      ],
+      "id": "1e8ca837-0c7c-4807-97f7-05b5611628b7",
+      "name": "Send a text message",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "sGbtI9krrre8xcIi",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1E1LMgwJxse1tuUaMKnxqhBYyfsnypycfvEBF1mOdlS0",
+          "mode": "list",
+          "cachedResultName": "Услуги (RAG)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1E1LMgwJxse1tuUaMKnxqhBYyfsnypycfvEBF1mOdlS0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1E1LMgwJxse1tuUaMKnxqhBYyfsnypycfvEBF1mOdlS0/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -3152,
+        -1088
+      ],
+      "id": "f390f7a6-ca9f-42c5-894c-0065637024b0",
+      "name": "Берем услуги с таблицы",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x9fVIG0FwPZYmE81",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        -2944,
+        -1088
+      ],
+      "id": "5c343c70-b091-461f-8cec-71d0ef334e7d",
+      "name": "Сохранение эмбеддингов в БД",
+      "credentials": {
+        "supabaseApi": {
+          "id": "SrDl7p2I6NihUzh5",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 100,
+        "options": {}
+      },
+      "id": "9273b774-1225-4852-a746-7cc9ddbdec38",
+      "name": "Создание чанков",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "position": [
+        -2832,
+        -752
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "service",
+                "value": "={{ $json.code }}"
+              },
+              {
+                "name": "description",
+                "value": "={{ $json.description }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "c8840a81-3647-436c-9a7b-53e31e778307",
+      "name": "Загрузка данных",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "position": [
+        -2832,
+        -912
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=Ты — менеджер по пресейлу и консалтингу в компании, которая предлагает набор услуг: консультации, внедрения, разработки и исследования. Мы не занимаемся другими видами работ.\nУ тебя есть:\nответы клиента на уточняющие вопросы (в таблице n8n_chat_histories);\nсписок доступных услуг разделённых по типам (консультация, внедрение, разработка, исследование). Каждая услуга имеет название, описание и стоимость.\nТвоя задача:\nНа основе ответов клиента подобрать из списка только релевантные услуги, соответствующие одному из разрешённых типов (консультация, внедрение, разработка, исследование).\nСформировать коммерческое предложение для этого клиента.\nНе придумывать новые услуги, типы или цены — использовать только то, что есть во входных данных. Если ничего не подходит, укажи это в summary.\nПравила:\nУслуги бери только из переданного списка documents и только из указанных типов.\nЕсли услуга частично подходит, кратко адаптируй её описание под контекст клиента, но не меняй тип, название и стоимость.\nЕсли услуг слишком много, выбери 3–5 наиболее релевантных по типам, чтобы покрыть нужды клиента (например, начать с консультации, перейти к внедрению).\nПодача должна быть деловой, понятной, с акцентом на то, как услуга решает проблему клиента.\nУчитывай последовательность: консультация/исследование → внедрение/разработка.\nОтвет должен быть  строго на русском языке:\n\"client_summary\": \"<краткое резюме ситуации клиента на основе его ответов (2–3 предложения)>\",\n\"proposal_title\": \"<краткий заголовок коммерческого предложения, например: 'Предложение по внедрению CRM-системы'>\",\n\"items\": [\n{\n\"service_type\": \"<тип услуги: 'консультация', 'внедрение', 'разработка' или 'исследование'>\",\n\"service_name\": \"<наименование услуги из БД>\",\n\"price\": \"<стоимость из БД как есть>\",\n\"description\": \"<краткое описание, адаптированное под клиента>\"\n}\n],\n\"total_price_comment\": \"<комментарий по общей стоимости, этапам или скидкам, если уместно>\"\n}\n\nВходные данные:\nОтветы клиента (результат опроса):\nn8n_chat_histories\nДоступные услуги из БД (по типам):\ndocuments "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        3520,
+        336
+      ],
+      "id": "aa6a1481-df99-4243-8d03-f8d2c22c3e46",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3440,
+        560
+      ],
+      "id": "6306f33f-6b16-47e6-8a38-8c4904c3f4a8",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GW1wqXvW3BLftkCs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        3616,
+        624
+      ],
+      "id": "34023ddf-bd2c-40a0-a89c-0d6dbfcf2c94",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Используй эти данные для получения информации по релевантным услугам",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        3856,
+        576
+      ],
+      "id": "d9a77425-ae53-4e75-a4a5-e40f4aa89713",
+      "name": "Supabase Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "EGZzmk2uRh1d41J0",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3984,
+        768
+      ],
+      "id": "106f5946-acc0-4012-8e6b-81ba0cd9fd79",
+      "name": "Embeddings Google Gemini2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GW1wqXvW3BLftkCs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "TRUNCATE TABLE documents RESTART IDENTITY; ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3360,
+        -1088
+      ],
+      "id": "29e537b1-54ab-4d54-b4e5-e8c823d23eac",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1664,
+        1072
+      ],
+      "id": "49e1e60e-3683-4673-b1cd-2a95fbfc9410",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GW1wqXvW3BLftkCs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты — классификатор входящих сообщений для отдела пресейла по автоматизации бизнес-процессов.\nВходящее сообщение: \"{{ $('Telegram Trigger').item.json.message.text }}\"\nКлассифицируй в ОДНУ категорию из списка:\n- no_content — сообщение без глобального смысла («Здравствуйте», «Ок», «Спасибо»)\n- service_request — явный запрос на услугу автоматизации (первичный контакт, цены, возможности)\n- answer_to_question — ответ на ранее заданный вопрос (уточнение, данные, подтверждение)\nПравила:\n- Если неоднозначность service_request vs answer_to_question → приоритет answer_to_question\n- Игнорируй приветствия и подписи\nВЫВОДИ строго в JSON, без текста до/после:\n{\n  \"category\": \"no_content|service_request|answer_to_question\",\n  \"explanation\": \"краткое объяснение в 1-2 предложениях\"\n}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -4000,
+        448
+      ],
+      "id": "eebbb80d-06a2-432e-8c3c-7da315f8f8a8",
+      "name": "Классификатор сообщений"
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputString = $input.first().json.output;\n\nlet category = 'parse_error';\n\n// Находим JSON между ``````\nconst jsonStart = outputString.indexOf('{');\nconst jsonEnd = outputString.lastIndexOf('}') + 1;\n\nif (jsonStart !== -1 && jsonEnd > jsonStart) {\n  const jsonString = outputString.substring(jsonStart, jsonEnd);\n  \n  try {\n    const parsed = JSON.parse(jsonString);\n    category = parsed.category || 'no_category';\n  } catch (e) {\n    // Игнорируем ошибку\n  }\n}\n\nreturn [{ json: { category } }];\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3632,
+        448
+      ],
+      "id": "7a7ef0b1-202c-4589-895a-46941f40baa1",
+      "name": "Вынимаем значение категории с JSON"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты — эксперт по пресейлу и брифованию клиентов в сфере автоматизации бизнес-процессов.\n\nУ тебя есть:\n- Тип запроса клиента: {{ $('Вынимаем значение категории с JSON').item.json.category }}\n- Сообщение клиента {{ $('Telegram Trigger').first().json.message.text }}\n- История чата для проверки контекста в таблице n8n_chat_histories\n\nЗадача: Сгенерировать РОВНО ОДИН наиболее релевантный уточняющий вопрос по категории и сообщению клиента.\n\nПравила:\n- Вопрос должен быть простым, понятным, без технического жаргона\n- Начинай с общего, переходи к деталям по мере диалога\n- Учитывай историю чата\n- Не отвечай за клиента, не делай выводов\n\nФормат ответа: ТОЛЬКО вопрос который можно сразу отправить клиенту\n\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -1968,
+        32
+      ],
+      "id": "01ef7a9f-632c-4521-8a38-21d50f9b6e6d",
+      "name": "Почемучка"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').first().json.message.from.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1648,
+        32
+      ],
+      "id": "02942826-1462-4e0a-b5e0-b27abb5e0c1c",
+      "name": "Отправка вопроса",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты — ассистент, который оценивает качество текстовых ответов клиента на вопросы брифа/опроса.\nНа входе у тебя есть несколько пар «вопрос–ответ».\n\nТвоя задача для КАЖДОЙ пары «вопрос–ответ»:\n\nОценить качество ответа клиента на конкретный вопрос.\n\nОпределить, является ли ответ качественным или его нужно уточнить.\n\nЕсли ответ некачественный, предложить один уточняющий вопрос.\n\nОценивай ответ по следующим метрикам (каждую по шкале 0–2):\n\nРелевантность: Насколько ответ по сути относится к заданному вопросу?\n\n0 — почти не связан с вопросом или оффтоп.\n\n1 — частично связан, но много общих фраз.\n\n2 — чётко про то, что спрашивали.\n\nПолнота: Насколько ответ покрывает ключевые аспекты вопроса?\n\n0 — почти ничего не понятно, сильно не хватает данных.\n\n1 — есть базовая информация, но не хватает деталей.\n\n2 — достаточно данных, чтобы переходить к следующему шагу.\n\nКонкретика: Насколько ответ содержит конкретные факты, цифры, примеры?\n\n0 — общие слова типа «ну как у всех», «не знаю», «примерно».\n\n1 — немного конкретики, но многие формулировки размыты.\n\n2 — конкретные формулировки: цифры, диапазоны, примеры, описанные процессы.\n\nСогласованность: Насколько ответ не противоречит себе и предыдущему контексту (если он есть)?\n\n0 — заметные противоречия (например, ранее говорил одно, теперь другое).\n\n1 — мелкие несостыковки или неполная ясность.\n\n2 — логично и согласовано с контекстом.\n\nПравила оценки качества ОТДЕЛЬНОГО ответа:\n\nСчитай ответ качественным, если одновременно выполняется:\n\nРелевантность ≥ 1,\n\nи Полнота ≥ 1,\n\nи Конкретика ≥ 1.\n\nЕсли хотя бы одна из этих трёх метрик (Релевантность, Полнота, Конкретика) = 0, считаем, что ответ нуждается в уточнении.\n\nТвоя логика:\n\nДля каждого вопроса оцени ответ по четырём метрикам.\n\nЕсли ответ нуждается в уточнении, добавь информацию об этом вопросе в список invalid_questions.\n\nЕсли ответ качественный, НЕ добавляй его в invalid_questions.\n\nНе придирайся к стилю и орфографии, оценивай по смыслу.\n\nЕсли ответ некачественный, сформулируй одну короткую понятную причину в поле reason (например: «Слишком общий ответ, нет конкретики по бюджету» или «Ответ не относится к заданному вопросу»).\n\nФормат ИТОГОВОГО ответа (строго JSON):\n\nЕсли есть хотя бы один некорректный ответ:\n\njson\n{\n  \"invalid_questions\": [\n    {\n      \"question\": \"<вопрос, который был задан клиенту или ИИ>\",\n      \"answer\": \"<ответ пользователя>\",\n      \"reason\": \"<почему ответ плохо подходит: что в нём не так или чего не хватает>\",\n      \"follow_up_question\": \"<один уточняющий вопрос, который поможет получить нужные данные>\"\n    }\n    // при наличии добавь сюда остальные проблемные вопросы\n  ]\n}\nЕсли все ответы корректные (все удовлетворяют критерию качества):\n\njson\n{\n  \"invalid_questions\": null\n}\nВходные данные:\n\nОтветы клиента берутся из:\n таблицы n8n_chat_histories в базе данных.\n\nНе выводи никаких пояснений, текста или комментариев вне указанной JSON‑структуры.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -2704,
+        672
+      ],
+      "id": "6990c400-efe8-4b1a-b377-93b29326a3a0",
+      "name": "Проверка вопросов"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').first().json.message.from.id }}",
+        "text": "=",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1952,
+        672
+      ],
+      "id": "b267bb5e-91c0-4625-aa92-e958f49dac93",
+      "name": "Отправка вопроса для уточнения",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputString = $input.first().json.output;\n\n// Самый простой и надёжный способ - берём всё между { и }\nconst start = outputString.indexOf('{');\nconst end = outputString.lastIndexOf('}') + 1;\n\nif (start === -1 || end <= start) {\n  return [{ json: { follow_up_question: '' } }];\n}\n\nconst jsonString = outputString.substring(start, end);\n\ntry {\n  const parsed = JSON.parse(jsonString);\n  \n  if (parsed.invalid_questions && \n      Array.isArray(parsed.invalid_questions) && \n      parsed.invalid_questions.length > 0 &&\n      parsed.invalid_questions[0].follow_up_question) {\n    \n    return [{ json: { \n      follow_up_question: parsed.invalid_questions[0].follow_up_question \n    } }];\n  }\n  \n} catch (e) {\n  // Игнорируем ошибку парсинга\n}\n\nreturn [{ json: { follow_up_question: '' } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2368,
+        672
+      ],
+      "id": "d1d3f681-7e8d-4541-892c-816b426807da",
+      "name": "Вынимаем уточняющий вопрос с JSON"
+    },
+    {
+      "parameters": {
+        "model": "xiaomi/mimo-v2-flash:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -1920,
+        1232
+      ],
+      "id": "c04d2e59-6b1b-4578-ac49-b7d3f1b88b36",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "yYPdAf4TZpRumqvi",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE orders \nSET status = 'Уточнение деталей', \n    questions_count = questions_count + 1, \n    last_contact_at = CURRENT_TIMESTAMP \nWHERE order_id = '{{ $('Достаем количество вопросов').item.json.order_id }}';\n\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1440,
+        32
+      ],
+      "id": "6ed71bad-d4a8-4bdd-90de-b781d8bb990a",
+      "name": "Обновление статуса заказа",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "clients",
+          "mode": "list",
+          "cachedResultName": "clients"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "user_id",
+              "value": "={{ $json.message.from.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4560,
+        976
+      ],
+      "id": "b0f4be04-32a2-480d-9bb2-06e9719a7523",
+      "name": "проверка есть ли клиент в БД",
+      "alwaysOutputData": true,
+      "notesInFlow": false,
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7f320443-3a2e-4d02-8f8b-2a9ab538b4b6",
+              "leftValue": "={{ $json.user_id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4368,
+        976
+      ],
+      "id": "ddd121f7-4af9-4398-b213-12b072ae265c",
+      "name": "Клиент уже есть?",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=Для продолжения пожалуйста поделитесь своим номером телефона ⬇️",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -4176,
+        1072
+      ],
+      "id": "5abac500-a608-461f-8eb3-6f310485dcdb",
+      "name": "Запрос номера телефона",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO clients (user_id, name, phone, last_contact_at)\nVALUES (\n    {{ $('Telegram Trigger').item.json.message.chat.id }}, \n    '{{ $('Telegram Trigger').item.json.message.chat.first_name }}',\n    '{{ $json.phone }}',\n    CURRENT_TIMESTAMP\n);\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4496,
+        -400
+      ],
+      "id": "3ad7f7b5-b64f-4bbe-89d5-5b23ec5a3346",
+      "name": "Создание клиента",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "orders",
+          "mode": "list",
+          "cachedResultName": "orders"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "order_id",
+              "value": "={{ $('Достаем номер заказа').first().json.order_id }}"
+            }
+          ]
+        },
+        "options": {
+          "outputColumns": [
+            "questions_count",
+            "user_id",
+            "order_id"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2704,
+        288
+      ],
+      "id": "0ad8707d-ef53-4798-8041-6d59d6e42f1f",
+      "name": "Достаем количество вопросов",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "37f262ea-5036-4c99-972a-4d28cccb2bc5",
+              "leftValue": "={{ $json.questions_count }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2496,
+        288
+      ],
+      "id": "f6643ce4-3235-41a6-ae63-15af3a71baa9",
+      "name": "Меньше 3 ?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6cb56da4-da74-4fb7-8759-9acdb331039a",
+              "leftValue": "={{ $json.follow_up_question }}",
+              "rightValue": "Null",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2144,
+        672
+      ],
+      "id": "4de83573-cfb3-4713-93d7-e9357a7577f0",
+      "name": "Надо уточнить ответ?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE clients \nSET last_contact_at = CURRENT_TIMESTAMP\nWHERE user_id = {{ $('Telegram Trigger').item.json.message.chat.id }};\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4176,
+        848
+      ],
+      "id": "916673fd-6272-4e7b-a73d-61059300565e",
+      "name": "Обновление даты посещения в clients",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "text": "=Для автоматизации бизнес-процессов нужны конкретные задачи. \nНапример: \"Как автоматизировать согласование счетов?\" \nВаш запрос?",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2704,
+        480
+      ],
+      "id": "7b661a8a-a2be-4421-8528-9e5f36b1f2fe",
+      "name": "Ответ на бессмысленный запрос",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=\"Привет! 😊 Расскажите, какую задачу хотите автоматизировать?\"\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -4304,
+        -400
+      ],
+      "id": "72212185-018d-44da-8dc5-07fc7996a0d7",
+      "name": "Предложение написать свой вопрос",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "orders",
+          "mode": "list",
+          "cachedResultName": "orders"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "user_id",
+              "value": "={{ $('Telegram Trigger').first().json.message.chat.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3968,
+        848
+      ],
+      "id": "430406ea-7ea0-480b-9550-a4c00eaa0d11",
+      "name": "Проверка сколько заказов",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты — эксперт-оценщик проектов, выступающий в роли бизнес-аналитика и технического консультанта. АНАЛИЗИРУЙ **ТОЛЬКО** текст из {{ $json.message.content }}\n\nВот шаги, которые ты должен выполнить:\n\nПострой связное саммари переговоров (\"summary\") — кратко, но ёмко изложи, что интересует клиента, какие цели и требования он обозначил, и какие уточнения были получены.\n\n**ЗАПРЕЩЕНО:**\n- Придумывать факты НЕ ИЗ истории чата\n- Делать выводы о сфере бизнеса клиента (строительство/ремонт и т.п.)\n- Добавлять детали, которых нет в тексте\n\nОцени полноту полученной информации (\"estimateSummary\") — проанализируй, достаточно ли клиент дал данных, чтобы можно было приступить к формированию ТЗ или выполнению заказа. Верни числовые оценки по шкале от 0 до 100 по критериям:\nfull: полнота данных (насколько всё необходимое уточнено);\npractice: наличие практических деталей (дизайн, структура, функционал, API и т. п.);\nplanning: есть ли чёткое описание этапов, сроков, бюджета;\nundefined: количество неопределённостей или размытых точек (0 — всё ясно, 100 — много неясностей).\n\nВнутри этого блока добавь краткий текст анализа (2–3 предложения) с описанием, чего не хватает для старта.\nОцени сложность реализации (\"estimateProjectDifficulty\") — оцени проект по трём направлениям (0–100):\nteam: требуемый уровень команды (чем выше — тем больше экспертизы и ролей нужно);\nhighload: вычислительная и архитектурная сложность (нагрузка, интеграции, производительность);\nbudg: ориентировочная бюджетная сложность (чем выше — тем больше ресурсов потребуется).\nВ конце рассчитай итоговую оценку общей сложности проекта и готовности к старту по 100-балльной шкале (например, средневзвешенное на основе критериев выше). Добавь поле totalScore в корень JSON.\nФормат ответа строго в JSON:\n{\"summary\": \"<Text>\",\"estimateSummary\": {\"analysis\": \"<Text>\",\"full\": <0-100>,\"practice\": <0-100>,\"planning\": <0-100>,\"undefined\": <0-100>},\"estimateProjectDifficulty\": {\"team\": <0-100>,\"highload\": <0-100>,\"budg\": <0-100>},\"totalScore\": <0-100>}\n\nПеред анализом убедись, что все текстовые блоки аккуратно структурированы без пояснений вне JSON. Добавь только то, что требуется по структуре.\n## ПРИМЕР ТОЧНОГО ФОРМАТА:\n{\n    \"summary\": \"Клиент хочет Telegram бот для поиска запчастей\",\n    \"estimateSummary\": {\n        \"analysis\": \"Хватает API и схемы БД, нужен дизайн\",\n        \"full\": 85,\n        \"practice\": 90,\n        \"planning\": 60,\n        \"undefined\": 20\n    },\n    \"estimateProjectDifficulty\": {\n        \"team\": 70,\n        \"highload\": 65,\n        \"budg\": 50\n    },\n    \"totalScore\": 72\n}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -1760,
+        432
+      ],
+      "id": "cd5ffcb8-817a-4e41-98dc-334524531c3c",
+      "name": "Оценщик",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "n8n_chat_histories",
+          "mode": "list",
+          "cachedResultName": "n8n_chat_histories"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "session_id",
+              "value": "={{ $json.order_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1952,
+        432
+      ],
+      "id": "cd1ea8af-c758-47c6-86e1-5794c959813f",
+      "name": "Достаем историю чата",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractTotalScore(output) {\n  try {\n    const jsonStr = output\n      .replace(/``````/g, '')\n      .trim();\n    return JSON.parse(jsonStr).totalScore;\n  } catch (e) {\n    const match = output.match(/\"totalScore\":\\s*(\\d+)/);\n    return match ? parseInt(match[1]) : 0;\n  }\n}\n\n// В n8n Code Node\nreturn items.map(item => ({\n  json: {\n    ...item.json,\n    total_score: extractTotalScore(item.json.output)  // одно имя!\n  }\n}));\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1232,
+        432
+      ],
+      "id": "60214ba8-6798-459e-b9ed-eaa60a22b837",
+      "name": "Достаем число оценки"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ef4e7800-9766-4a38-bf69-cb891a2dc366",
+              "leftValue": "={{ $json.total_score }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1040,
+        432
+      ],
+      "id": "80e52bb9-2213-40d4-b1f9-70b19bd75b63",
+      "name": "Больше 70 ?"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "natalikarpova13@gmail.com",
+          "mode": "list",
+          "cachedResultName": "natalikarpova13@gmail.com"
+        },
+        "timeMax": "={{ $now.plus({ days: 7 }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        528
+      ],
+      "id": "bc9e89c2-ed81-4ca1-b8d8-06c204aabbe1",
+      "name": "Получаем занятые слоты за 5 дней",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "KDbMATZgClDhSOFs",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем события из Google Calendar ноды\nconst events = $input.all().flatMap(item => item.json.items || item.json);\n\n// ✅ Получаем order_id из первой записи\nconst orderId = $('Достаем номер заказа').first().json.order_id;\n\n// Диапазон дат (следующие 5 рабочих дней, начиная с завтра)\nconst today = new Date();\ntoday.setHours(0, 0, 0, 0);\nconst startDate = new Date(today);\nstartDate.setDate(startDate.getDate() + 1); // Начинаем с завтра\n\nconst endDate = new Date(today);\nendDate.setDate(endDate.getDate() + 7);\n\nconst workingHours = { start: 15, end: 18 };\nconst slotDuration = 30;\n\nconst freeSlots = [];\n\nfor (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {\n  const day = date.getDay();\n  \n  // Будни: Пн-Пт (1-5)\n  if (day === 0 || day === 6) continue;\n  \n  const dateStr = date.toISOString().split('T')[0];\n  const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];\n  \n  // Форматируем дату для кнопок: 31.12\n  const formattedDate = dateStr.split('-').reverse().join('.');\n  \n  // Слоты по 30 мин\n  for (let hour = workingHours.start; hour < workingHours.end; hour++) {\n    for (let minute = 0; minute < 60; minute += slotDuration) {\n      const slotStartStr = `${dateStr}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00+03:00`;\n      const slotEndStr = `${dateStr}T${(hour + (minute + slotDuration) / 60).toString().padStart(2, '0')}:${\n        ((minute + slotDuration) % 60).toString().padStart(2, '0')\n      }:00+03:00`;\n      \n      const slotStart = new Date(slotStartStr);\n      const slotEnd = new Date(slotEndStr);\n      \n      const isFree = !events.some(event => {\n        if (!event.start?.dateTime || !event.end?.dateTime) return false;\n        const eventStart = event.start.dateTime;\n        const eventEnd = event.end.dateTime;\n        return slotStartStr < eventEnd && slotEndStr > eventStart;\n      });\n      \n      if (isFree) {\n        freeSlots.push({\n          date: dateStr,\n          formattedDate,  // ✅ Добавили отформатированную дату\n          time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,\n          dayOfWeek: dayNames[day],\n          slotStart: slotStartStr,\n          slotEnd: slotEndStr\n        });\n      }\n    }\n  }\n}\n\n// Группируем по дням\nconst slotsByDay = {};\nfreeSlots.forEach(slot => {\n  if (!slotsByDay[slot.date]) slotsByDay[slot.date] = [];\n  slotsByDay[slot.date].push(slot);\n});\n\nObject.keys(slotsByDay).sort().forEach(date => {\n  slotsByDay[date].sort((a, b) => a.time.localeCompare(b.time));\n});\n\nconst chatId = $('Telegram Trigger').first().json.message?.chat?.id || \n               $('Сообщение что время занято').first().json.result?.chat?.id || null;\n\n// ✅ ИСПРАВЛЕННЫЙ блок кнопок с ДАТОЙ и order_id\nconst inlineKeyboard = [];\nconst sortedDates = Object.keys(slotsByDay).sort();\nlet totalDays = 0;\n\nfor (let i = 0; i < sortedDates.length && totalDays < 5; i++) {\n  const date = sortedDates[i];\n  const daySlots = slotsByDay[date];\n  \n  if (daySlots.length > 0) {\n    const dayName = daySlots[0].dayOfWeek;\n    const formattedDate = daySlots[0].formattedDate; // ✅ Берем дату из первого слота\n    \n    // Создаем кнопки для слотов этого дня (группы по 2-3)\n    for (let j = 0; j < daySlots.length; j += 3) {\n      const row = daySlots.slice(j, j + 3).map(slot => ({\n        text: `${dayName} ${formattedDate} ${slot.time}`, // ✅ Добавили дату в текст кнопки\n        callback_data: `book_${orderId}_${slot.date}_${slot.time.replace(':', '-')}` // ✅ Добавили order_id\n      }));\n      inlineKeyboard.push(row);\n    }\n    \n    totalDays++;\n    \n    if (totalDays < 5 && i < sortedDates.length - 1) {\n      inlineKeyboard.push([{ text: \"────────────\", callback_data: \"ignore\" }]);\n    }\n  }\n}\n\nconst telegramMessage = `📅 **Выберите день и время когда вам удобно созвониться:**\\n\\n`;\n\nconst telegramBodyString = JSON.stringify({\n  chat_id: chatId,\n  text: telegramMessage,\n  reply_markup: {\n    inline_keyboard: inlineKeyboard\n  },\n  parse_mode: \"Markdown\"\n}, null, 2);\n\nconst result = {\n  chat_id: chatId,\n  orderId,  // ✅ Добавили в результат\n  totalDays,\n  totalFreeSlots: freeSlots.length,\n  totalPossibleSlots: totalDays * 6,\n  freeDays: Object.keys(slotsByDay).slice(0, 5),\n  \n  telegramBodyString, \n  telegramBody: {\n    chat_id: chatId,\n    text: telegramMessage,\n    reply_markup: {\n      inline_keyboard: inlineKeyboard\n    },\n    parse_mode: \"Markdown\"\n  },\n  \n  inlineKeyboard,\n  messagePreview: telegramMessage,\n  \n  debug: {\n    totalEvents: events.length,\n    orderIdFound: !!orderId,\n    orderIdValue: orderId,\n    checkedDates: sortedDates.slice(0, 5),\n    generatedButtons: inlineKeyboard.length,\n    chatIdFound: !!chatId,\n    chatIdValue: chatId\n  }\n};\n\nreturn [{ json: result }];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        528
+      ],
+      "id": "2d522de0-dbca-41da-bbe1-c281b52850c3",
+      "name": "Форм-е сообщ-я с кнопками(свободных даты)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Извлекаем номер телефона\nconst phoneRaw = $input.first().json.message.text || $input.first().json.message.contact?.phone_number || '';\n\nconst phoneClean = phoneRaw\n  .replace(/[^\\d]/g, '')  // Удаляем всё кроме цифр\n  .replace(/^8/, '7');    // Меняем 8 на 7 в начале (российский формат)\n\nreturn [{\n  json: {\n    phone: phoneClean  // \"79111111111\"\n  }\n}];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4688,
+        -400
+      ],
+      "id": "e624b378-c365-4a60-8ac3-2c67d76150e3",
+      "name": "Подготовка номера для записи"
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "natalikarpova13@gmail.com",
+          "mode": "list",
+          "cachedResultName": "natalikarpova13@gmail.com"
+        },
+        "timeMin": "={{ $json.startTime }}",
+        "timeMax": "={{ $json.endTime }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -4496,
+        -16
+      ],
+      "id": "ec1d0de1-188b-4aef-b12a-3b3275cde2a2",
+      "name": "Проверка занято ли время",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "KDbMATZgClDhSOFs",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "natalikarpova13@gmail.com",
+          "mode": "list",
+          "cachedResultName": "natalikarpova13@gmail.com"
+        },
+        "start": "={{ $('Формирование времени начала и окончания встречи').item.json.startTime }}",
+        "end": "={{ $('Формирование времени начала и окончания встречи').item.json.endTime }}",
+        "additionalFields": {
+          "summary": "=Встреча по заказу:{{ $('Формирование времени начала и окончания встречи').item.json.orderId }}  {{ $('Формирование времени начала и окончания встречи').item.json.startTime }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -4112,
+        -128
+      ],
+      "id": "ed3cf0c6-ffe6-40ef-89b4-e34304651caf",
+      "name": "Резервирование времени",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "KDbMATZgClDhSOFs",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d739e784-8424-4db4-b9d9-5561fa91ce56",
+              "leftValue": "={{ $json.available }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4304,
+        -16
+      ],
+      "id": "a9cc22db-8d0c-4288-939d-e1f6b63adbcd",
+      "name": "Время свободно?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').first().json.callback_query.message.chat.id }}",
+        "text": "=❌ Извините, {{ $json.formatted }} только что заняли.\nВыберите, пожалуйста, другое время.\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3920,
+        80
+      ],
+      "id": "b687b580-f792-4947-b10e-780679a4065d",
+      "name": "Сообщение что время занято",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot8074937111:AAE3lcd2-HQ9zPX3o0dbwvcRCeunkZ4-nl4/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type ",
+              "value": "\"application/json\""
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.telegramBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -80,
+        528
+      ],
+      "id": "cdc51ad6-ae66-43b1-abf4-1ed3c5dcbcd0",
+      "name": "Сообщение с слотами - кнопками"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Из callback_query.data: \"book_92773b31-4c39-4149-ad95-c2f9ea9fa67f_2026-01-06_17-30\"\nconst callbackData = $input.first().json.callback_query.data;\nconst [, orderId, date, time] = callbackData.match(/book_([^_]+)_(\\d{4}-\\d{2}-\\d{2})_(\\d{2}-\\d{2})/);\n\nconst startHour = parseInt(time.split('-')[0]);\nconst startMinute = parseInt(time.split('-')[1]);\n\n// Добавляем 30 минут\nlet endMinute = startMinute + 30;\nlet endHour = startHour;\nif (endMinute >= 60) {\n  endMinute -= 60;\n  endHour += 1;\n}\n\nconst startTime = `${date}T${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00+03:00`;\nconst endTime = `${date}T${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}:00+03:00`;\n\nreturn [{ \n  json: { \n    orderId,        // \"92773b31-4c39-4149-ad95-c2f9ea9fa67f\"\n    startTime,      // \"2026-01-06T17:30:00+03:00\"\n    endTime         // \"2026-01-06T18:00:00+03:00\"\n  } \n}];\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4688,
+        -16
+      ],
+      "id": "4756a207-5a95-4cbd-8617-c2b33ff7d744",
+      "name": "Формирование времени начала и окончания встречи"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "natalikarpova13@gmail.com",
+          "mode": "list",
+          "cachedResultName": "natalikarpova13@gmail.com"
+        },
+        "timeMax": "={{ $now.plus({ days: 7 }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -3712,
+        80
+      ],
+      "id": "5c77a92d-1d86-4372-a681-568bcd3aaa3a",
+      "name": "Получаем занятые слоты за 5 дней1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "KDbMATZgClDhSOFs",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем события из Google Calendar ноды\nconst events = $input.all().flatMap(item => item.json.items || item.json);\n\n// ✅ Получаем order_id из первой записи\nconst orderId = $input.first().json.order_id;\n\n// Диапазон дат (следующие 5 рабочих дней, начиная с завтра)\nconst today = new Date();\ntoday.setHours(0, 0, 0, 0);\nconst startDate = new Date(today);\nstartDate.setDate(startDate.getDate() + 1); // Начинаем с завтра\n\nconst endDate = new Date(today);\nendDate.setDate(endDate.getDate() + 7);\n\nconst workingHours = { start: 15, end: 18 };\nconst slotDuration = 30;\n\nconst freeSlots = [];\n\nfor (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {\n  const day = date.getDay();\n  \n  // Будни: Пн-Пт (1-5)\n  if (day === 0 || day === 6) continue;\n  \n  const dateStr = date.toISOString().split('T')[0];\n  const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];\n  \n  // Форматируем дату для кнопок: 31.12\n  const formattedDate = dateStr.split('-').reverse().join('.');\n  \n  // Слоты по 30 мин\n  for (let hour = workingHours.start; hour < workingHours.end; hour++) {\n    for (let minute = 0; minute < 60; minute += slotDuration) {\n      const slotStartStr = `${dateStr}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00+03:00`;\n      const slotEndStr = `${dateStr}T${(hour + (minute + slotDuration) / 60).toString().padStart(2, '0')}:${\n        ((minute + slotDuration) % 60).toString().padStart(2, '0')\n      }:00+03:00`;\n      \n      const slotStart = new Date(slotStartStr);\n      const slotEnd = new Date(slotEndStr);\n      \n      const isFree = !events.some(event => {\n        if (!event.start?.dateTime || !event.end?.dateTime) return false;\n        const eventStart = event.start.dateTime;\n        const eventEnd = event.end.dateTime;\n        return slotStartStr < eventEnd && slotEndStr > eventStart;\n      });\n      \n      if (isFree) {\n        freeSlots.push({\n          date: dateStr,\n          formattedDate,  // ✅ Добавили отформатированную дату\n          time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,\n          dayOfWeek: dayNames[day],\n          slotStart: slotStartStr,\n          slotEnd: slotEndStr\n        });\n      }\n    }\n  }\n}\n\n// Группируем по дням\nconst slotsByDay = {};\nfreeSlots.forEach(slot => {\n  if (!slotsByDay[slot.date]) slotsByDay[slot.date] = [];\n  slotsByDay[slot.date].push(slot);\n});\n\nObject.keys(slotsByDay).sort().forEach(date => {\n  slotsByDay[date].sort((a, b) => a.time.localeCompare(b.time));\n});\n\nconst chatId = $('Telegram Trigger').first().json.message?.chat?.id || \n               $('Сообщение что время занято').first().json.result?.chat?.id || null;\n\n// ✅ ИСПРАВЛЕННЫЙ блок кнопок с ДАТОЙ и order_id\nconst inlineKeyboard = [];\nconst sortedDates = Object.keys(slotsByDay).sort();\nlet totalDays = 0;\n\nfor (let i = 0; i < sortedDates.length && totalDays < 5; i++) {\n  const date = sortedDates[i];\n  const daySlots = slotsByDay[date];\n  \n  if (daySlots.length > 0) {\n    const dayName = daySlots[0].dayOfWeek;\n    const formattedDate = daySlots[0].formattedDate; // ✅ Берем дату из первого слота\n    \n    // Создаем кнопки для слотов этого дня (группы по 2-3)\n    for (let j = 0; j < daySlots.length; j += 3) {\n      const row = daySlots.slice(j, j + 3).map(slot => ({\n        text: `${dayName} ${formattedDate} ${slot.time}`, // ✅ Добавили дату в текст кнопки\n        callback_data: `book_${orderId}_${slot.date}_${slot.time.replace(':', '-')}` // ✅ Добавили order_id\n      }));\n      inlineKeyboard.push(row);\n    }\n    \n    totalDays++;\n    \n    if (totalDays < 5 && i < sortedDates.length - 1) {\n      inlineKeyboard.push([{ text: \"────────────\", callback_data: \"ignore\" }]);\n    }\n  }\n}\n\nconst telegramMessage = `📅 **Выберите день и время когда вам удобно созвониться:**\\n\\n`;\n\nconst telegramBodyString = JSON.stringify({\n  chat_id: chatId,\n  text: telegramMessage,\n  reply_markup: {\n    inline_keyboard: inlineKeyboard\n  },\n  parse_mode: \"Markdown\"\n}, null, 2);\n\nconst result = {\n  chat_id: chatId,\n  orderId,  // ✅ Добавили в результат\n  totalDays,\n  totalFreeSlots: freeSlots.length,\n  totalPossibleSlots: totalDays * 6,\n  freeDays: Object.keys(slotsByDay).slice(0, 5),\n  \n  telegramBodyString, \n  telegramBody: {\n    chat_id: chatId,\n    text: telegramMessage,\n    reply_markup: {\n      inline_keyboard: inlineKeyboard\n    },\n    parse_mode: \"Markdown\"\n  },\n  \n  inlineKeyboard,\n  messagePreview: telegramMessage,\n  \n  debug: {\n    totalEvents: events.length,\n    orderIdFound: !!orderId,\n    orderIdValue: orderId,\n    checkedDates: sortedDates.slice(0, 5),\n    generatedButtons: inlineKeyboard.length,\n    chatIdFound: !!chatId,\n    chatIdValue: chatId\n  }\n};\n\nreturn [{ json: result }];\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3520,
+        80
+      ],
+      "id": "ced1e35e-2184-405d-86e9-077f694080ba",
+      "name": "Форм-е сообщ-я с кнопками(свободных даты)1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot8074937111:AAE3lcd2-HQ9zPX3o0dbwvcRCeunkZ4-nl4/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type ",
+              "value": "\"application/json\""
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.telegramBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3328,
+        80
+      ],
+      "id": "a18762d2-3fc5-4623-bdf5-efd81330075d",
+      "name": "Сообщение с слотами - кнопками1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE orders \nSET status = 'Ожидает встречи со специалистом'\nWHERE order_id = '{{ $('Формирование времени начала и окончания встречи').item.json.orderId }}';\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3728,
+        -128
+      ],
+      "id": "388d9344-615e-4bb5-b06c-7d96e38e85fd",
+      "name": "Обновление статуса заказа3",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.message.chat.id }}",
+        "text": "=Ваша встреча запланирована на {{ $json.formatted }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3344,
+        -128
+      ],
+      "id": "be84357a-07af-4e9c-93f8-fdf8368f9b88",
+      "name": "Сообщение что встреча создана",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const isoDate = $('Формирование времени начала и окончания встречи')\n  .first()\n  .json\n  .startTime;\n\n// Берём «сырые» компоненты времени по UTC\nconst date = new Date(isoDate);\n\nconst months = [\n  \"января\", \"февраля\", \"марта\", \"апреля\", \"мая\", \"июня\",\n  \"июля\", \"августа\", \"сентября\", \"октября\", \"ноября\", \"декабря\"\n];\n\n// Если нужно именно то время, что в строке (+03:00), то\n// проще всего сдвинуть часы с учётом смещения:\n\n// 1) получаем смещение в минутах (для +03:00 будет -180)\nconst offsetMinutes = date.getTimezoneOffset(); \n// 2) прибавляем 3 часа (180 минут) к UTC-времени, чтобы зафиксировать +03\nconst fixedTime = new Date(date.getTime() + (3 * 60 + offsetMinutes) * 60 * 1000);\n\nconst day = fixedTime.getDate();\nconst month = months[fixedTime.getMonth()];\nconst hours = fixedTime.getHours();\nconst minutes = fixedTime.getMinutes().toString().padStart(2, '0');\n\nconst result = `${day} ${month} в ${hours}:${minutes}`;\n\nreturn [{\n  json: { formatted: result }\n}];\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3536,
+        -128
+      ],
+      "id": "9f424855-ed8b-4b21-8333-b61ff1128f44",
+      "name": "Перевод даты в удобный формат"
+    },
+    {
+      "parameters": {
+        "path": "2ef18949-666c-4741-a7e9-c89b80ea7943",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        336
+      ],
+      "id": "cab9ce17-3c82-4f80-bee5-2130c236303c",
+      "name": "Webhook изменение статуса задачи",
+      "webhookId": "2ef18949-666c-4741-a7e9-c89b80ea7943"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE orders \nSET status = 'Задача согласована'\nWHERE order_id = '{{ $('Code in JavaScript').item.json.order_id }}';\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        304,
+        240
+      ],
+      "id": "7500efb4-7458-4fef-837b-ed44c5561f9f",
+      "name": "Статус = Задача согласована",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE orders \nSET status = 'Задача не согласована'\nWHERE order_id = '{{ $('Code in JavaScript').item.json.order_id }}';\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        304,
+        432
+      ],
+      "id": "95c9741d-b809-4a36-afd6-202e97386ec0",
+      "name": "Статус заказ = Задача не согласована",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "natalikarpova13@gmail.com",
+          "mode": "list",
+          "cachedResultName": "natalikarpova13@gmail.com"
+        },
+        "timeMax": "={{ $now.plus({ days: 7 }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        496,
+        432
+      ],
+      "id": "7f91f17f-0bfd-4a8e-944d-640d996a4e27",
+      "name": "Получаем занятые слоты за 5 дней2",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "KDbMATZgClDhSOFs",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем события из Google Calendar ноды\nconst events = $input.all().flatMap(item => item.json.items || item.json);\n\n// ✅ Получаем order_id из первой записи\nconst orderId = $input.first().json.order_id;\n\n// Диапазон дат (следующие 5 рабочих дней, начиная с завтра)\nconst today = new Date();\ntoday.setHours(0, 0, 0, 0);\nconst startDate = new Date(today);\nstartDate.setDate(startDate.getDate() + 1); // Начинаем с завтра\n\nconst endDate = new Date(today);\nendDate.setDate(endDate.getDate() + 7);\n\nconst workingHours = { start: 15, end: 18 };\nconst slotDuration = 30;\n\nconst freeSlots = [];\n\nfor (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {\n  const day = date.getDay();\n  \n  // Будни: Пн-Пт (1-5)\n  if (day === 0 || day === 6) continue;\n  \n  const dateStr = date.toISOString().split('T')[0];\n  const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];\n  \n  // Форматируем дату для кнопок: 31.12\n  const formattedDate = dateStr.split('-').reverse().join('.');\n  \n  // Слоты по 30 мин\n  for (let hour = workingHours.start; hour < workingHours.end; hour++) {\n    for (let minute = 0; minute < 60; minute += slotDuration) {\n      const slotStartStr = `${dateStr}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00+03:00`;\n      const slotEndStr = `${dateStr}T${(hour + (minute + slotDuration) / 60).toString().padStart(2, '0')}:${\n        ((minute + slotDuration) % 60).toString().padStart(2, '0')\n      }:00+03:00`;\n      \n      const slotStart = new Date(slotStartStr);\n      const slotEnd = new Date(slotEndStr);\n      \n      const isFree = !events.some(event => {\n        if (!event.start?.dateTime || !event.end?.dateTime) return false;\n        const eventStart = event.start.dateTime;\n        const eventEnd = event.end.dateTime;\n        return slotStartStr < eventEnd && slotEndStr > eventStart;\n      });\n      \n      if (isFree) {\n        freeSlots.push({\n          date: dateStr,\n          formattedDate,  // ✅ Добавили отформатированную дату\n          time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,\n          dayOfWeek: dayNames[day],\n          slotStart: slotStartStr,\n          slotEnd: slotEndStr\n        });\n      }\n    }\n  }\n}\n\n// Группируем по дням\nconst slotsByDay = {};\nfreeSlots.forEach(slot => {\n  if (!slotsByDay[slot.date]) slotsByDay[slot.date] = [];\n  slotsByDay[slot.date].push(slot);\n});\n\nObject.keys(slotsByDay).sort().forEach(date => {\n  slotsByDay[date].sort((a, b) => a.time.localeCompare(b.time));\n});\n\nconst chatId = $('Telegram Trigger').first().json.message?.chat?.id || \n               $('Сообщение что время занято').first().json.result?.chat?.id || null;\n\n// ✅ ИСПРАВЛЕННЫЙ блок кнопок с ДАТОЙ и order_id\nconst inlineKeyboard = [];\nconst sortedDates = Object.keys(slotsByDay).sort();\nlet totalDays = 0;\n\nfor (let i = 0; i < sortedDates.length && totalDays < 5; i++) {\n  const date = sortedDates[i];\n  const daySlots = slotsByDay[date];\n  \n  if (daySlots.length > 0) {\n    const dayName = daySlots[0].dayOfWeek;\n    const formattedDate = daySlots[0].formattedDate; // ✅ Берем дату из первого слота\n    \n    // Создаем кнопки для слотов этого дня (группы по 2-3)\n    for (let j = 0; j < daySlots.length; j += 3) {\n      const row = daySlots.slice(j, j + 3).map(slot => ({\n        text: `${dayName} ${formattedDate} ${slot.time}`, // ✅ Добавили дату в текст кнопки\n        callback_data: `book_${orderId}_${slot.date}_${slot.time.replace(':', '-')}` // ✅ Добавили order_id\n      }));\n      inlineKeyboard.push(row);\n    }\n    \n    totalDays++;\n    \n    if (totalDays < 5 && i < sortedDates.length - 1) {\n      inlineKeyboard.push([{ text: \"────────────\", callback_data: \"ignore\" }]);\n    }\n  }\n}\n\nconst telegramMessage = `📅 **Выберите день и время когда вам удобно созвониться:**\\n\\n`;\n\nconst telegramBodyString = JSON.stringify({\n  chat_id: chatId,\n  text: telegramMessage,\n  reply_markup: {\n    inline_keyboard: inlineKeyboard\n  },\n  parse_mode: \"Markdown\"\n}, null, 2);\n\nconst result = {\n  chat_id: chatId,\n  orderId,  // ✅ Добавили в результат\n  totalDays,\n  totalFreeSlots: freeSlots.length,\n  totalPossibleSlots: totalDays * 6,\n  freeDays: Object.keys(slotsByDay).slice(0, 5),\n  \n  telegramBodyString, \n  telegramBody: {\n    chat_id: chatId,\n    text: telegramMessage,\n    reply_markup: {\n      inline_keyboard: inlineKeyboard\n    },\n    parse_mode: \"Markdown\"\n  },\n  \n  inlineKeyboard,\n  messagePreview: telegramMessage,\n  \n  debug: {\n    totalEvents: events.length,\n    orderIdFound: !!orderId,\n    orderIdValue: orderId,\n    checkedDates: sortedDates.slice(0, 5),\n    generatedButtons: inlineKeyboard.length,\n    chatIdFound: !!chatId,\n    chatIdValue: chatId\n  }\n};\n\nreturn [{ json: result }];\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        432
+      ],
+      "id": "d38028e2-4455-439e-8400-1bb81aa89ffa",
+      "name": "Форм-е сообщ-я с кнопками(свободных даты)2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot8074937111:AAE3lcd2-HQ9zPX3o0dbwvcRCeunkZ4-nl4/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type ",
+              "value": "\"application/json\""
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.telegramBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        880,
+        432
+      ],
+      "id": "84a2a30b-5f6f-4b41-a705-379e33100202",
+      "name": "Сообщение с слотами - кнопками2"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "*"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -5664,
+        784
+      ],
+      "id": "7431accd-f8ae-4be0-bd85-99e07b04c5a2",
+      "name": "Telegram Trigger",
+      "webhookId": "494cae93-0727-4764-bd3d-4d530e3b8bcf",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot8074937111:AAE3lcd2-HQ9zPX3o0dbwvcRCeunkZ4-nl4/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type ",
+              "value": "\"application/json\""
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.telegramBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3424,
+        848
+      ],
+      "id": "1b8be93f-61d5-417d-8ed8-efb9f4dc6c7a",
+      "name": "Сообщение с заказами - кнопками"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "project_assessor",
+          "mode": "list",
+          "cachedResultName": "project_assessor"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "session_id",
+              "value": "={{ $('Достаем order_id').item.json.order_id }}"
+            }
+          ]
+        },
+        "sort": {
+          "values": [
+            {
+              "column": "id",
+              "direction": "DESC"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        496,
+        240
+      ],
+      "id": "cfb984aa-f6e2-4425-bf4c-028b92814dcd",
+      "name": "Достаем описание с оценщика",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Берем content напрямую из первого сообщения\nconst content = $input.first().json.message.content;\n\nif (!content) {\n  throw new Error('content не найден в message');\n}\n\n// Парсим JSON\nlet parsedContent;\ntry {\n  parsedContent = JSON.parse(content);\n} catch (e) {\n  throw new Error('Ошибка парсинга JSON: ' + e.message);\n}\n\n// Извлекаем summary\nconst summary = parsedContent.summary || 'summary не найден';\n\nreturn [{\n  json: { summary }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        240
+      ],
+      "id": "7d01106b-4351-41f6-91e9-02145b7ec1c7",
+      "name": "Форм-е сообщ-я с кнопками(свободных даты)3"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "chatId": "={{ $('Достаем ID чата').item.json.user_id }}",
+        "message": "=Итак, ваша задача:\n {{ $('Форм-е сообщ-я с кнопками(свободных даты)3').item.json.summary }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "approveLabel": "✅ Согласен",
+            "disapproveLabel": "❌ Не согласен"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        240
+      ],
+      "id": "2340299a-8ca1-4bc4-80a7-cf0299ec5b8f",
+      "name": "Сообщение с описанием задачи",
+      "webhookId": "6fcb7a6b-380e-47d9-9d45-94429b31aef7",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8e10ab5e-a2d1-4a59-9aff-bd867a27666f",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1072,
+        240
+      ],
+      "id": "8abff9a9-7615-4421-bce6-eb381c0b45c8",
+      "name": "Согласен?"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "orders",
+          "mode": "list",
+          "cachedResultName": "orders"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "order_id",
+              "value": "={{ $json.order_id }}"
+            }
+          ]
+        },
+        "options": {
+          "outputColumns": [
+            "user_id"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -80,
+        336
+      ],
+      "id": "f2147775-a55c-497c-bbd1-95f3abc78389",
+      "name": "Достаем ID чата",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "service_request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f000e3bd-22d8-462c-829c-ee21e698e941"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Есть запрос на услугу"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7105aa83-11d9-4f58-97bc-5b766b761e22",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "no_content",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Сообщение без смысла"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7e3df630-c701-4ebc-9734-20d55270a4e6",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "answer_to_question",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ответ на вопрос"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -3424,
+        416
+      ],
+      "id": "98f91bbd-1082-43ae-b702-b93d7c66f160",
+      "name": "Какая категория?"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Достаем номер заказа').item.json.order_id }}",
+        "contextWindowLength": 3
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -3904,
+        640
+      ],
+      "id": "f26eb761-b12e-432e-a165-7f66a5a067e0",
+      "name": "n8n_chat_histories",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Достаем номер заказа').first().json.order_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -2432,
+        1040
+      ],
+      "id": "75f5f971-c993-4f11-bc20-a3588ab601c3",
+      "name": "n8n_chat_histories (5)",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем заказы из предыдущей ноды (где вынули UUID)\nconst orders = $input.all().map(item => item.json.order_id).filter(id => id);\n\n// Получаем CHAT_ID из Telegram Trigger\nconst chatId = $('Telegram Trigger').first().json.message?.chat?.id || \n               $('Сообщение для отладки').first().json.result?.chat?.id || \n               null;\n\nif (!orders.length) {\n  return [{\n    json: {\n      message: \"У вас нет активных заказов. Создайте новый?\",\n      chat_id: chatId,\n      has_orders: false\n    }\n  }];\n}\n\n// Формируем кнопки для заказов (по 2 в ряд)\nconst inlineKeyboard = [];\nfor (let i = 0; i < orders.length; i += 2) {\n  const row = [];\n  \n  // Первый заказ в ряду\n  row.push({\n    text: `Заказ ${orders[i].substring(0, 8)}...`,  // Сокращаем UUID\n    callback_data: `order_${orders[i]}`\n  });\n  \n  // Второй заказ (если есть)\n  if (i + 1 < orders.length) {\n    row.push({\n      text: `Заказ ${orders[i+1].substring(0, 8)}...`,\n      callback_data: `order_${orders[i+1]}`\n    });\n  }\n  \n  inlineKeyboard.push(row);\n}\n\n// Добавляем разделитель и кнопку \"создать новый\"\ninlineKeyboard.push([{ text: \"────────────\", callback_data: \"ignore\" }]);\ninlineKeyboard.push([{ \n  text: \"➕ Создать новый заказ\", \n  callback_data: \"new_order\" \n}]);\n\n// Telegram message\nconst telegramMessage = `📋 **У вас есть активные заказы. По какому из них продолжим общение?**\\n\\n`;\n\nconst result = {\n  chat_id: chatId,\n  total_orders: orders.length,\n  orders,\n  \n  telegramBodyString: JSON.stringify({\n    chat_id: chatId,\n    text: telegramMessage,\n    reply_markup: {\n      inline_keyboard: inlineKeyboard\n    },\n    parse_mode: \"Markdown\"\n  }, null, 2),\n  \n  telegramBody: {\n    chat_id: chatId,\n    text: telegramMessage,\n    reply_markup: {\n      inline_keyboard: inlineKeyboard\n    },\n    parse_mode: \"Markdown\"\n  },\n  \n  inlineKeyboard,\n  messagePreview: telegramMessage,\n  \n  debug: {\n    chatIdFound: !!chatId,\n    ordersFound: orders.length\n  }\n};\n\nreturn [{\n  json: result\n}];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3632,
+        848
+      ],
+      "id": "dd790cac-0912-4d09-8032-f0fcf41a5efb",
+      "name": "Создаем кнопки заказов"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Достаем количество вопросов').item.json.order_id }}",
+        "tableName": "project_assessor",
+        "contextWindowLength": 1
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -1664,
+        640
+      ],
+      "id": "c5c641dc-02a2-4c7d-94c0-fbf048c8c29a",
+      "name": "project_assessor",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').first().json.message.from.id }}",
+        "text": "=Ваш проект оценен как сложный. И нам потребуется привлечение специалиста. Мы оцениваем Ваш проект по следующим оценкам:\n{{ $('Достаем число оценки').item.json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -656,
+        528
+      ],
+      "id": "4f49118e-1367-4939-a985-c5650644d468",
+      "name": "Сообщение для отладки",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE orders \nSET status = 'Отправлено на согласование'\nWHERE order_id = '{{ $('Достаем историю чата').item.json.session_id }}';\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -848,
+        336
+      ],
+      "id": "ef1b02ae-3af1-47c4-9d12-8c9591b7d65a",
+      "name": "Статус = Отправлено на согласование",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE orders \nSET status = 'Договариваемся о доп встрече'\nWHERE order_id = '{{ $('Достаем историю чата').item.json.session_id }}';\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -848,
+        528
+      ],
+      "id": "4ed0f183-de49-4ae1-9ac4-6145de9d6c06",
+      "name": "Статус = Договариваемся о доп. встрече",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tracker.yandex.net/v2/issues/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer y0__xCSkap5GJL7OSCct86iFO3Omy-jZfx8RrhCRfPbQOfSyepu"
+            },
+            {
+              "name": "X-Cloud-Org-Id",
+              "value": "bpfv9t63mra98pbkbu1t"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"summary\": \"Согласовать заказ {{ $('Достаем количество вопросов').item.json.order_id }}\",\n  \"queue\": \"DEVTEAM\"\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -656,
+        336
+      ],
+      "id": "a8f11c9c-f439-4182-8b4b-f0b459dc1936",
+      "name": "Задача в трекере = Согласовать заказ"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.body.issue.summary;\n\n// Ищем UUID в конце строки после последнего пробела\nconst lastSpaceIndex = text.lastIndexOf(' ');\nconst potentialUuid = lastSpaceIndex > 0 ? text.substring(lastSpaceIndex + 1) : null;\n\nconst orderId = potentialUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(potentialUuid) \n  ? potentialUuid \n  : null;\n\nreturn [{\n  json: {\n    order_id: orderId\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        336
+      ],
+      "id": "a6a5c502-6821-4b8d-86bf-4e31855ac99a",
+      "name": "Достаем order_id"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook изменение статуса задачи').item.json.body.issue.status }}",
+                    "rightValue": "Согласовано",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7dfb5e01-69a9-4475-bd97-38117ca699fd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Согласовано"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "5effe3c4-5f50-4621-83e0-9f2859ee991d",
+                    "leftValue": "={{ $('Webhook изменение статуса задачи').item.json.body.issue.status }}",
+                    "rightValue": "Не согласовано",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        112,
+        336
+      ],
+      "id": "23e20f22-dd63-457a-9327-334a1566c710",
+      "name": "Согласовано?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tracker.yandex.net/v2/issues/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer y0__xCSkap5GJL7OSCct86iFO3Omy-jZfx8RrhCRfPbQOfSyepu"
+            },
+            {
+              "name": "X-Cloud-Org-Id",
+              "value": "bpfv9t63mra98pbkbu1t"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"summary\": \"{{ $json.summary }}\",\n  \"queue\": \"DEVTEAM\"\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3920,
+        -128
+      ],
+      "id": "9bf3ef31-57fa-48a1-a35a-676d0d2d4d63",
+      "name": "Задача в трекере = Встреча по заказу"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Берем data из первого элемента\nconst data = $input.first().json.callback_query.data;\n\nif (!data) {\n  throw new Error('data не найдена');\n}\n\n// Вырезаем UUID после \"order_\"\nconst orderId = data.replace('order_', '');\n\nreturn [{\n  json: { \n    order_number: orderId  // c1684d0d-3907-41a5-aa93-9fb8a49d3269\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4560,
+        1552
+      ],
+      "id": "5c731048-9f32-4810-b1af-112009293bfa",
+      "name": "Вынимаем номер заказа"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO orders (user_id)\nVALUES ({{ $('Telegram Trigger').item.json.callback_query.message.chat.id }})\nRETURNING order_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4160,
+        1424
+      ],
+      "id": "48c94e41-22f1-4656-a011-5869dfd7dc2c",
+      "name": "Создание заказа1",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5a6cfa9f-71e2-43b5-9f9b-e9e221e7312c",
+              "leftValue": "={{ $json.order_number }}",
+              "rightValue": "new_order",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4352,
+        1552
+      ],
+      "id": "97dd7f3f-6085-4e9b-9674-6b700e0e0c9d",
+      "name": "Новый заказ?"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты — эксперт по пресейлу и брифованию клиентов в сфере автоматизации бизнес-процессов.\n\nУ тебя есть:\n- История чата для проверки контекста в таблице n8n_chat_histories\n\nЗадача: Сгенерировать РОВНО ОДИН наиболее релевантный уточняющий вопрос по категории и сообщению клиента.\n\nПравила:\n- Вопрос должен быть простым, понятным, без технического жаргона\n- Начинай с общего, переходи к деталям по мере диалога\n- Учитывай историю чата\n- Не отвечай за клиента, не делай выводов\n\nФормат ответа: ТОЛЬКО вопрос который можно сразу отправить клиенту\n\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -2640,
+        1664
+      ],
+      "id": "1757296c-846d-4d08-add6-13f75f1b6f69",
+      "name": "Почемучка2"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.from.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2288,
+        1664
+      ],
+      "id": "c0df55f4-1bfe-4c6a-9566-0b417a68656f",
+      "name": "Отправка вопроса2",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE orders \nSET status = 'Уточнение деталей', \n    questions_count = questions_count + 1, \n    last_contact_at = CURRENT_TIMESTAMP \nWHERE order_id = '{{ $('Вынимаем номер заказа').item.json.order_number }}';\n\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2064,
+        1664
+      ],
+      "id": "3b2d9a54-97aa-4a39-b2a1-23b946ca380f",
+      "name": "Обновление статуса заказа4",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.order_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -2576,
+        1872
+      ],
+      "id": "fe7fadd7-ab18-45f6-aee4-aad515052748",
+      "name": "Postgres Chat Memory3",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "orders",
+          "mode": "list",
+          "cachedResultName": "orders"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "order_id",
+              "value": "={{ $('Вынимаем номер заказа').item.json.order_number }}"
+            }
+          ]
+        },
+        "options": {
+          "outputColumns": [
+            "questions_count",
+            "user_id",
+            "order_id"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3168,
+        1760
+      ],
+      "id": "0e9b046b-000d-4535-accb-36244efddad8",
+      "name": "Достаем количество вопросов1",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "37f262ea-5036-4c99-972a-4d28cccb2bc5",
+              "leftValue": "={{ $json.questions_count }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2976,
+        1760
+      ],
+      "id": "704d24d8-de4e-406e-aee8-06f62559ec0f",
+      "name": "Меньше 3 ?1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.message.chat.id }}",
+        "text": "=Отлично! Новый заказ №{{ $json.order_id }} создан.\n\nНапишите, пожалуйста, детали заказа (что нужно, сроки, особенности)",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3936,
+        1424
+      ],
+      "id": "33cb97e4-4b20-4b93-b107-7c4a54e5a1f5",
+      "name": "Предложение написать вопрос по новому заказу",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const isoDate = $('Формирование времени начала и окончания встречи').first().json.startTime;\nconst date = new Date(isoDate);\n\n// Русские названия месяцев\nconst months = [\n  \"января\", \"февраля\", \"марта\", \"апреля\", \"мая\", \"июня\",\n  \"июля\", \"августа\", \"сентября\", \"октября\", \"ноября\", \"декабря\"\n];\n\nconst day = date.getDate();\nconst month = months[date.getMonth()];\nconst hours = date.getHours();\nconst minutes = date.getMinutes().toString().padStart(2, '0');\n\nconst result = `${day} ${month} в ${hours}:${minutes}`;\n\nreturn [{\n  json: { formatted: result }  // \"26 декабря в 15:30\"\n}];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4112,
+        80
+      ],
+      "id": "78fa1bbf-444c-4a14-a2b6-9ff241eaf36e",
+      "name": "Перевод даты в удобный формат1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.message.chat.id }}",
+        "text": "=Напишите, пожалуйста, что вас интересует",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3936,
+        1648
+      ],
+      "id": "55f66542-c01c-4eb5-a04a-5b8ad11eff84",
+      "name": "Предложение написать вопрос",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0f5e9b94-5f5e-4d95-95db-d7ad374b0b10",
+              "leftValue": "={{ $json.message.entities[0].type }}",
+              "rightValue": "bot_command",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -5488,
+        784
+      ],
+      "id": "7f250796-4f42-4c2b-a472-afde00c47bc9",
+      "name": "Старт?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0f5e9b94-5f5e-4d95-95db-d7ad374b0b10",
+              "leftValue": "={{ $json.callback_query.data }}",
+              "rightValue": "order",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -5312,
+        784
+      ],
+      "id": "fe8b661b-38a6-4307-891b-8f8d34f6449f",
+      "name": "Номер заказа?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0f5e9b94-5f5e-4d95-95db-d7ad374b0b10",
+              "leftValue": "={{ $json.callback_query.data }}",
+              "rightValue": "book",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -5136,
+        784
+      ],
+      "id": "80a56e35-415e-4687-aacb-8d77350324af",
+      "name": "Кнопка с датой?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0f5e9b94-5f5e-4d95-95db-d7ad374b0b10",
+              "leftValue": "={{ $json.message.entities[0].type }}",
+              "rightValue": "phone_number",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4944,
+        784
+      ],
+      "id": "b9163c5b-f62b-4a1b-8beb-29e50c1239ab",
+      "name": "Номер телефона?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE orders \nSET  last_contact_at = CURRENT_TIMESTAMP \nWHERE order_id = '{{ $('Вынимаем номер заказа').item.json.order_number }}';\n\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4160,
+        1648
+      ],
+      "id": "1344f8b0-53eb-4f7a-a58e-b67c2ee092b1",
+      "name": "Обновление статуса заказа1",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "orders",
+          "mode": "list",
+          "cachedResultName": "orders"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "user_id",
+              "value": "={{ $('Telegram Trigger').item.json.message.from.id }}"
+            }
+          ]
+        },
+        "sort": {
+          "values": [
+            {
+              "column": "last_contact_at",
+              "direction": "DESC"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4688,
+        464
+      ],
+      "id": "253a3d87-04f9-408b-b5fb-295a30c503f6",
+      "name": "Достаем номер заказа",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e0155c92-bd09-411e-b6ad-fb7c25a480c6",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4496,
+        464
+      ],
+      "id": "52c66fee-2603-4b54-bc5f-a0b791b83e90",
+      "name": "Заказ есть?1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=Нажмите, пожалуйста, кнопку старт",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -4304,
+        576
+      ],
+      "id": "a839cde3-06ac-45de-a882-c705c3498b2c",
+      "name": "Сообщение нажмите \"старт\"",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dbf32178-7ad0-4f6c-b930-137cee5bb555",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3808,
+        992
+      ],
+      "id": "4454af62-5520-4d38-a483-85e8cadbec40",
+      "name": "Есть заказы?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO orders (user_id)\nVALUES ({{ $('Telegram Trigger').item.json.message.chat.id }})\nRETURNING order_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3632,
+        1088
+      ],
+      "id": "8b32cfeb-6a71-4fee-bb02-c0b20e021cc4",
+      "name": "Создание заказа2",
+      "credentials": {
+        "postgres": {
+          "id": "vtYFdmdoEtMRqK80",
+          "name": "RAG Agent with Memory"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=Напишите, пожалуйста, что вас интересует",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3424,
+        1088
+      ],
+      "id": "a7b25756-036e-46ec-b609-41c2b29c9359",
+      "name": "Предложение написать вопрос по новому заказу1",
+      "webhookId": "46a1a701-f126-4f99-989e-30983418ca2c",
+      "credentials": {
+        "telegramApi": {
+          "id": "ga9barrv03nsiRK8",
+          "name": "Бот-продажник"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Сохранение эмбеддингов в БД",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Берем услуги с таблицы": {
+      "main": [
+        [
+          {
+            "node": "Сохранение эмбеддингов в БД",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Создание чанков": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Загрузка данных",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Загрузка данных": {
+      "ai_document": [
+        [
+          {
+            "node": "Сохранение эмбеддингов в БД",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Берем услуги с таблицы",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Оценщик",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Классификатор сообщений": {
+      "main": [
+        [
+          {
+            "node": "Вынимаем значение категории с JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Вынимаем значение категории с JSON": {
+      "main": [
+        [
+          {
+            "node": "Какая категория?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Почемучка": {
+      "main": [
+        [
+          {
+            "node": "Отправка вопроса",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка вопросов": {
+      "main": [
+        [
+          {
+            "node": "Вынимаем уточняющий вопрос с JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Вынимаем уточняющий вопрос с JSON": {
+      "main": [
+        [
+          {
+            "node": "Надо уточнить ответ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Почемучка",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Проверка вопросов",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Классификатор сообщений",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Почемучка2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправка вопроса": {
+      "main": [
+        [
+          {
+            "node": "Обновление статуса заказа",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "проверка есть ли клиент в БД": {
+      "main": [
+        [
+          {
+            "node": "Клиент уже есть?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Клиент уже есть?": {
+      "main": [
+        [
+          {
+            "node": "Обновление даты посещения в clients",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Запрос номера телефона",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Создание клиента": {
+      "main": [
+        [
+          {
+            "node": "Предложение написать свой вопрос",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Достаем количество вопросов": {
+      "main": [
+        [
+          {
+            "node": "Меньше 3 ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Меньше 3 ?": {
+      "main": [
+        [
+          {
+            "node": "Почемучка",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Достаем историю чата",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Надо уточнить ответ?": {
+      "main": [
+        [
+          {
+            "node": "Отправка вопроса для уточнения",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Достаем количество вопросов",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Обновление даты посещения в clients": {
+      "main": [
+        [
+          {
+            "node": "Проверка сколько заказов",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ответ на бессмысленный запрос": {
+      "main": [
+        []
+      ]
+    },
+    "Запрос номера телефона": {
+      "main": [
+        []
+      ]
+    },
+    "Проверка сколько заказов": {
+      "main": [
+        [
+          {
+            "node": "Есть заказы?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Оценщик": {
+      "main": [
+        [
+          {
+            "node": "Достаем число оценки",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Достаем историю чата": {
+      "main": [
+        [
+          {
+            "node": "Оценщик",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Достаем число оценки": {
+      "main": [
+        [
+          {
+            "node": "Больше 70 ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Больше 70 ?": {
+      "main": [
+        [
+          {
+            "node": "Статус = Отправлено на согласование",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Статус = Договариваемся о доп. встрече",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем занятые слоты за 5 дней": {
+      "main": [
+        [
+          {
+            "node": "Форм-е сообщ-я с кнопками(свободных даты)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Форм-е сообщ-я с кнопками(свободных даты)": {
+      "main": [
+        [
+          {
+            "node": "Сообщение с слотами - кнопками",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подготовка номера для записи": {
+      "main": [
+        [
+          {
+            "node": "Создание клиента",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка занято ли время": {
+      "main": [
+        [
+          {
+            "node": "Время свободно?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Резервирование времени": {
+      "main": [
+        [
+          {
+            "node": "Задача в трекере = Встреча по заказу",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Время свободно?": {
+      "main": [
+        [
+          {
+            "node": "Резервирование времени",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Перевод даты в удобный формат1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Формирование времени начала и окончания встречи": {
+      "main": [
+        [
+          {
+            "node": "Проверка занято ли время",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сообщение что время занято": {
+      "main": [
+        [
+          {
+            "node": "Получаем занятые слоты за 5 дней1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем занятые слоты за 5 дней1": {
+      "main": [
+        [
+          {
+            "node": "Форм-е сообщ-я с кнопками(свободных даты)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Форм-е сообщ-я с кнопками(свободных даты)1": {
+      "main": [
+        [
+          {
+            "node": "Сообщение с слотами - кнопками1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Обновление статуса заказа3": {
+      "main": [
+        [
+          {
+            "node": "Перевод даты в удобный формат",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сообщение что встреча создана": {
+      "main": [
+        []
+      ]
+    },
+    "Перевод даты в удобный формат": {
+      "main": [
+        [
+          {
+            "node": "Сообщение что встреча создана",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook изменение статуса задачи": {
+      "main": [
+        [
+          {
+            "node": "Достаем order_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Статус заказ = Задача не согласована": {
+      "main": [
+        [
+          {
+            "node": "Получаем занятые слоты за 5 дней2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем занятые слоты за 5 дней2": {
+      "main": [
+        [
+          {
+            "node": "Форм-е сообщ-я с кнопками(свободных даты)2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Форм-е сообщ-я с кнопками(свободных даты)2": {
+      "main": [
+        [
+          {
+            "node": "Сообщение с слотами - кнопками2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Старт?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Статус = Задача согласована": {
+      "main": [
+        [
+          {
+            "node": "Достаем описание с оценщика",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Достаем описание с оценщика": {
+      "main": [
+        [
+          {
+            "node": "Форм-е сообщ-я с кнопками(свободных даты)3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Форм-е сообщ-я с кнопками(свободных даты)3": {
+      "main": [
+        [
+          {
+            "node": "Сообщение с описанием задачи",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сообщение с описанием задачи": {
+      "main": [
+        [
+          {
+            "node": "Согласен?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Согласен?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Получаем занятые слоты за 5 дней2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Достаем ID чата": {
+      "main": [
+        [
+          {
+            "node": "Согласовано?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Какая категория?": {
+      "main": [
+        [
+          {
+            "node": "Достаем количество вопросов",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ответ на бессмысленный запрос",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Проверка вопросов",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "n8n_chat_histories": {
+      "ai_memory": [
+        [
+          {
+            "node": "Классификатор сообщений",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "n8n_chat_histories (5)": {
+      "ai_memory": [
+        [
+          {
+            "node": "Проверка вопросов",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Почемучка",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Создаем кнопки заказов": {
+      "main": [
+        [
+          {
+            "node": "Сообщение с заказами - кнопками",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "project_assessor": {
+      "ai_memory": [
+        [
+          {
+            "node": "Оценщик",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сообщение для отладки": {
+      "main": [
+        [
+          {
+            "node": "Получаем занятые слоты за 5 дней",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Статус = Отправлено на согласование": {
+      "main": [
+        [
+          {
+            "node": "Задача в трекере = Согласовать заказ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Статус = Договариваемся о доп. встрече": {
+      "main": [
+        [
+          {
+            "node": "Сообщение для отладки",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Достаем order_id": {
+      "main": [
+        [
+          {
+            "node": "Достаем ID чата",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Согласовано?": {
+      "main": [
+        [
+          {
+            "node": "Статус = Задача согласована",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Статус заказ = Задача не согласована",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Задача в трекере = Встреча по заказу": {
+      "main": [
+        [
+          {
+            "node": "Обновление статуса заказа3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Вынимаем номер заказа": {
+      "main": [
+        [
+          {
+            "node": "Новый заказ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Новый заказ?": {
+      "main": [
+        [
+          {
+            "node": "Создание заказа1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Обновление статуса заказа1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Создание заказа1": {
+      "main": [
+        [
+          {
+            "node": "Предложение написать вопрос по новому заказу",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Обновление статуса заказа": {
+      "main": [
+        []
+      ]
+    },
+    "Почемучка2": {
+      "main": [
+        [
+          {
+            "node": "Отправка вопроса2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Отправка вопроса2": {
+      "main": [
+        [
+          {
+            "node": "Обновление статуса заказа4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory3": {
+      "ai_memory": [
+        [
+          {
+            "node": "Почемучка2",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Достаем количество вопросов1": {
+      "main": [
+        [
+          {
+            "node": "Меньше 3 ?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Меньше 3 ?1": {
+      "main": [
+        [
+          {
+            "node": "Почемучка2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Перевод даты в удобный формат1": {
+      "main": [
+        [
+          {
+            "node": "Сообщение что время занято",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Предложение написать вопрос": {
+      "main": [
+        []
+      ]
+    },
+    "Предложение написать вопрос по новому заказу": {
+      "main": [
+        []
+      ]
+    },
+    "Старт?": {
+      "main": [
+        [
+          {
+            "node": "проверка есть ли клиент в БД",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Номер заказа?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Номер заказа?": {
+      "main": [
+        [
+          {
+            "node": "Вынимаем номер заказа",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Кнопка с датой?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Кнопка с датой?": {
+      "main": [
+        [
+          {
+            "node": "Формирование времени начала и окончания встречи",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Номер телефона?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Номер телефона?": {
+      "main": [
+        [
+          {
+            "node": "Подготовка номера для записи",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Достаем номер заказа",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Обновление статуса заказа1": {
+      "main": [
+        [
+          {
+            "node": "Предложение написать вопрос",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Достаем номер заказа": {
+      "main": [
+        [
+          {
+            "node": "Заказ есть?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Заказ есть?1": {
+      "main": [
+        [
+          {
+            "node": "Классификатор сообщений",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Сообщение нажмите \"старт\"",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Есть заказы?": {
+      "main": [
+        [
+          {
+            "node": "Создаем кнопки заказов",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Создание заказа2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Создание заказа2": {
+      "main": [
+        [
+          {
+            "node": "Предложение написать вопрос по новому заказу1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "19ec981b-c16d-434f-8c11-01d616337160",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b50e4099c768129fcea26f3dd1a4f67f1b422c1a61e0bc95bce1a80e5893cb2"
+  },
+  "id": "u0oM0KUUnG2pA5EZ",
+  "tags": []
+}
